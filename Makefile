@@ -1,7 +1,10 @@
 BIN := viz
-OBJS := src/main.o
+OBJS := \
+	src/main.o \
+	src/wb_analyzer.o \
+	src/wb_gldebug.o
 
-PACKAGES := ao
+PACKAGES := ao libglfw
 CCFLAGS := -O2 $(shell pkg-config --cflags $(PACKAGES))
 LIBS := $(shell pkg-config --libs $(PACKAGES))
 

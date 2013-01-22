@@ -7,7 +7,11 @@
 #include <ao/ao.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <string.h>
 #include <stdint.h>
+
+#include "wb_analyzer.h"
+#include "wb_gldebug.h"
 
 int main()
 {
@@ -22,21 +26,44 @@ int main()
         .matrix = matrix,
     };
 
+    wb::Analyzer analyzer(fmt.rate);
+    wb::GLDebug gld(&analyzer);
+
     ao_device *dev = ao_open_live(ao_default_driver_id(), &fmt, 0);
     if (!dev) {
         perror("ao_open_live");
         return 1;
     }
 
-    char buffer[1024];
-    ssize_t numBytes;
-    ssize_t count = 0;
-
-    while ((numBytes = read(0, buffer, sizeof buffer)) > 0) {
-        ao_play(dev, buffer, numBytes);
-        count += numBytes;
-        printf("%ld\n", count);
+    if (!gld.start()) {
+        perror("Error starting user interface");
+        return 1;
     }
 
+    union {
+        char bytes[1024];
+        int16_t samples[1];
+    } buffer;
+
+    ssize_t offset = 0;
+    ssize_t numBytes;
+    unsigned frameSize = fmt.channels * sizeof(int16_t);
+
+    while ((numBytes = read(0, buffer.bytes + offset, sizeof buffer - offset)) > 0) {
+
+        // Any partial frames that carried over from before.
+        numBytes += offset;
+        unsigned frames = numBytes / frameSize;
+        unsigned truncBytes = frames * frameSize;
+        offset = numBytes - truncBytes;
+
+        ao_play(dev, buffer.bytes, truncBytes);
+        analyzer.pcmInput(buffer.samples, fmt.channels, frames);
+
+        memmove(buffer.bytes, buffer.bytes + truncBytes, offset);
+    }
+
+    gld.stop();
+    ao_shutdown();
     return 0;
 }
