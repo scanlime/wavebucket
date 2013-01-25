@@ -4,14 +4,9 @@
 
 set -e
 
-DEFAULT="$HOME/Dropbox/iTunes/iTunes Music/Owl City/Of June/03 Designer Skyline.m4a"
-
-INPUT=$1
-: ${INPUT:=$DEFAULT}
-
 make
 
-mplayer "$INPUT" \
+mplayer "$@" \
     -really-quiet \
     -af channels=2,resample=44100,format=s16le \
     -vc null -vo null \

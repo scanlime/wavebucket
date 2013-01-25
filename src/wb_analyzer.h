@@ -4,6 +4,7 @@
  */
 
 #include <stdint.h>
+#include "wb_ring.h"
 #pragma once
 
 namespace wb {
@@ -18,9 +19,13 @@ public:
     static const unsigned xxxDebugWidth = 1024;
     static const unsigned xxxDebugHeight = 512;
     uint8_t xxxDebugBuffer[xxxDebugWidth * xxxDebugHeight];
+    double xxxExposure;
 
 private:
-    int sampleRate;
+    unsigned sampleRate;
+
+    /// Unfiltered monaural signal, at 'sampleRate', in the time domain.
+    Ring<int, 8192> monoTimeDomain;
 };
 
 }  // namespace wb

@@ -9,18 +9,18 @@ VIZ_OBJS := \
 CDEPS := src/*.h
 
 PACKAGES := ao libglfw
-CCFLAGS := -Wall -Werror -g -O2
-LIBS := -lstdc++ -lAntTweakBar
+CCFLAGS := -Wall -Werror -g -O3 -ffast-math
+LIBS := -lstdc++ -lAntTweakBar -lm
 
 CCFLAGS += $(shell pkg-config --cflags $(PACKAGES))
 LIBS += $(shell pkg-config --libs $(PACKAGES))
 
 all: $(BINS)
 
-viz: $(VIZ_OBJS) $(CDEPS)
+viz: $(VIZ_OBJS)
 	$(CC) -o $@ $(VIZ_OBJS) $(LIBS)
 
-%.o: %.cpp
+%.o: %.cpp $(CDEPS)
 	$(CC) -c -o $@ $< $(CCFLAGS)
 
 .PHONY: clean

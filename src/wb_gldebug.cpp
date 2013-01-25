@@ -6,8 +6,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <AntTweakBar.h>
-
 #include "wb_gldebug.h"
 #include "wb_analyzer.h"
 
@@ -15,14 +13,15 @@ namespace wb {
 
 GLDebug::GLDebug(Analyzer *analyzer)
     : analyzer(analyzer)
-    {}
+{}
 
 int GLDebug::setup()
 {
     glfwInit();
 
-    if (!glfwOpenWindow(1024, 512,
-            8,8,8,0,24,0, GLFW_WINDOW)) {
+    if (!glfwOpenWindow(analyzer->xxxDebugWidth,
+                        analyzer->xxxDebugHeight,
+                        8,8,8,0,24,0, GLFW_WINDOW)) {
         perror("glfwOpenWindow");
         return 1;
     }
@@ -32,6 +31,10 @@ int GLDebug::setup()
     glfwSetWindowTitle("Viz Debug UI");
 
     TwInit(TW_OPENGL, NULL);
+    twBar = TwNewBar("Tweaky");
+
+    TwAddVarRW(twBar, "Exposure", TW_TYPE_DOUBLE, &analyzer->xxxExposure,
+        "min=0 step=0.01 precision=3");
 
     glfwSetWindowSizeCallback(onWindowSize);
     glfwSetMouseButtonCallback((GLFWmousebuttonfun)TwEventMouseButtonGLFW);

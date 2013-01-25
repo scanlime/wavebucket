@@ -4,6 +4,7 @@
  */
 
 #include <GL/glfw.h>
+#include <AntTweakBar.h>
 #include <stdint.h>
 #pragma once
 
@@ -22,6 +23,7 @@ public:
 
 private:
     Analyzer *analyzer;
+    TwBar *twBar;
     GLuint spectroTexture;
 
     static void GLFWCALL onWindowSize(int width, int height);
