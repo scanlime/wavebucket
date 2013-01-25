@@ -24,8 +24,7 @@ public:
 private:
     unsigned sampleRate;
 
-    /// Unfiltered monaural signal, at 'sampleRate', in the time domain.
-    Ring<int, 8192> monoTimeDomain;
+    Ring<int, 8192> combFeedback[xxxDebugHeight];
 };
 
 }  // namespace wb

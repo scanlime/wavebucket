@@ -17,7 +17,10 @@ Analyzer::Analyzer(unsigned sampleRate)
 
 void Analyzer::pcmInput(const int16_t *samples, unsigned channels, unsigned frames)
 {
-    static int x = 0;
+    // oh the horror
+    memmove(xxxDebugBuffer, xxxDebugBuffer+1, sizeof(xxxDebugBuffer)-1);
+
+    double exposure = xxxExposure * 2e-4;
 
     // For each frame, mix down to mono.
     while (frames--) {
@@ -26,36 +29,26 @@ void Analyzer::pcmInput(const int16_t *samples, unsigned channels, unsigned fram
             mono += *(samples++);
         }
 
-        monoTimeDomain.push(mono);
-
-        if (!(frames & 127)) {
-            for (int y = 0; y < xxxDebugHeight; ++y) {
-                int combWidth = y;
-
-                double monoE = 0;
-                double combE = 0;
-                
-                // energy integrator
-                for (int j = 0; j < combWidth * 2; j++) {
-                    int td = monoTimeDomain[-j];
-
-                    // comb filter
-                    int comb = td + monoTimeDomain[-j-combWidth];
-
-                    double tdF = td;
-                    double combF = comb;
-
-                    monoE += tdF < 0 ? -tdF : tdF;
-                    combE += combF < 0 ? -combF : combF;
-                }
-
-                double energy = std::max(0.0, monoE - combE) / combWidth;
-                uint8_t luma = std::max(0.001, std::min(255.99, energy * xxxExposure));
-
-                xxxDebugBuffer[x + y * xxxDebugWidth] = luma;
-            }
-            if (++x == xxxDebugWidth) x = 0;
+        // Update feedback-form comb filter (resonant)
+        for (int y = 0; y < xxxDebugHeight; ++y) {
+            int c = combFeedback[y][-y];
+            int comb =  c - (c / 8) + mono; 
+            combFeedback[y].push(comb);
         }
+    }
+
+    // Integrate the energy in each comb filter's buffer
+    for (int y = 0; y < xxxDebugHeight; ++y) {
+
+            long energy = 0;
+            for (int j = 0; j < y*2; ++j) {
+                int x = combFeedback[y][-j];
+                energy += x * x;
+            }
+
+            uint8_t luma = std::max(0.001, std::min(255.99, sqrt(energy) * exposure));
+
+            xxxDebugBuffer[(y+1) * xxxDebugWidth - 1] = luma;
     }
 }
 
