@@ -2,6 +2,8 @@
 #
 # Simple driver script, piping audio in from mplayer.
 
+set -e
+
 DEFAULT="$HOME/Dropbox/iTunes/iTunes Music/Owl City/Of June/03 Designer Skyline.m4a"
 
 INPUT=$1

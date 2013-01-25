@@ -3,6 +3,7 @@
  * Copyright (C) 2013 Micah Elizabeth Scott. All rights reserved.
  */
 
+#include <GL/glfw.h>
 #include <stdint.h>
 #pragma once
 
@@ -14,14 +15,16 @@ class GLDebug {
 public:
     GLDebug(Analyzer *analyzer);
 
-    /// Start the GL debug display, running in its own thread.
-    int start();
-
-    /// Ask the GL display thread to stop, and wait for it.
-    void stop();
+    int setup();
+    void shutdown();
+    void draw();
+    bool isRunning();
 
 private:
     Analyzer *analyzer;
+    GLuint spectroTexture;
+
+    static void GLFWCALL onWindowSize(int width, int height);
 };
 
 }  // namespace wb
