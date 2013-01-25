@@ -3,6 +3,7 @@
  * Copyright (C) 2013 Micah Elizabeth Scott. All rights reserved.
  */
 
+#include <algorithm>
 #include <stdio.h>
 #include <string.h>
 #include "wb_analyzer.h"
@@ -15,9 +16,17 @@ Analyzer::Analyzer(unsigned sampleRate)
 
 void Analyzer::pcmInput(const int16_t *samples, unsigned channels, unsigned frames)
 {
-    // xxx
-    memset(xxxDebugBuffer, 0x10, sizeof xxxDebugBuffer);
-    memcpy(xxxDebugBuffer, samples, frames*channels*2);
+    // For each frame, mix down to mono.
+    while (frames--) {
+        int mono = 0;
+        for (int c = channels; c; --c) {
+            mono += *(samples++);
+        }
+
+        static int y = 0;
+        xxxDebugBuffer[y++] = 127 + mono / 512; 
+        if (y == sizeof xxxDebugBuffer) y = 0;
+    }
 }
 
 }  // namespace wb

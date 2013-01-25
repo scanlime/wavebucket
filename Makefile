@@ -9,7 +9,7 @@ VIZ_OBJS := \
 CDEPS := src/*.h
 
 PACKAGES := ao libglfw
-CCFLAGS := -Wall -g -O2
+CCFLAGS := -Wall -Werror -g -O2
 LIBS := -lstdc++ -lAntTweakBar
 
 CCFLAGS += $(shell pkg-config --cflags $(PACKAGES))

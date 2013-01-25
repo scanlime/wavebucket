@@ -21,7 +21,7 @@ int GLDebug::setup()
 {
     glfwInit();
 
-    if (!glfwOpenWindow(600, 600,
+    if (!glfwOpenWindow(1024, 512,
             8,8,8,0,24,0, GLFW_WINDOW)) {
         perror("glfwOpenWindow");
         return 1;
@@ -44,8 +44,8 @@ int GLDebug::setup()
     glBindTexture(GL_TEXTURE_2D, spectroTexture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
     return 0;
 }
@@ -69,12 +69,12 @@ void GLDebug::onWindowSize(int width, int height)
 
 void GLDebug::draw()
 {
-    static const GLfloat s = 0.90;
+    static const GLfloat s = 1;
     static const GLfloat va[] = {
-        0, 0,  -s, -s, 0,
-        1, 0,   s, -s, 0,
-        1, 1,   s,  s, 0,
-        0, 1,  -s,  s, 0,
+        0, 1,  -s, -s, 0,
+        1, 1,   s, -s, 0,
+        1, 0,   s,  s, 0,
+        0, 0,  -s,  s, 0,
     };
 
     glBindTexture(GL_TEXTURE_2D, spectroTexture);
