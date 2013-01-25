@@ -15,7 +15,9 @@ public:
     /// Handle input PCM data. Expects (channels * frames * sizeof(int16_t) bytes of data.
     void pcmInput(const int16_t *samples, unsigned channels, unsigned frames);
 
-    uint32_t xxxDebugBuffer[256*512];
+    static const unsigned xxxDebugWidth = 256;
+    static const unsigned xxxDebugHeight = 256;
+    uint32_t xxxDebugBuffer[xxxDebugWidth * xxxDebugHeight];
 
 private:
     int sampleRate;
