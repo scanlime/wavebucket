@@ -70,6 +70,7 @@ struct Viz
 
         while (running) {
             ssize_t numBytes = read(0, buffer.bytes + offset, sizeof buffer - offset);
+
             if (numBytes <= 0) {
                 running = false;
                 break;

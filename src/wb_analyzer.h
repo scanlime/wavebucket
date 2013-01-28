@@ -24,7 +24,7 @@ public:
 private:
     unsigned sampleRate;
 
-    Ring<int, 8192> combFeedback[xxxDebugHeight];
+    IntegralRing<int64_t, 8192> ring;
 };
 
 }  // namespace wb

@@ -17,10 +17,9 @@ Analyzer::Analyzer(unsigned sampleRate)
 
 void Analyzer::pcmInput(const int16_t *samples, unsigned channels, unsigned frames)
 {
-    // oh the horror
-    memmove(xxxDebugBuffer, xxxDebugBuffer+1, sizeof(xxxDebugBuffer)-1);
-
-    double exposure = xxxExposure * 2e-4;
+    static int y = 0;
+    static float sums[xxxDebugWidth];
+    memset(sums, 0, sizeof sums);
 
     // For each frame, mix down to mono.
     while (frames--) {
@@ -29,27 +28,37 @@ void Analyzer::pcmInput(const int16_t *samples, unsigned channels, unsigned fram
             mono += *(samples++);
         }
 
-        // Update feedback-form comb filter (resonant)
-        for (int y = 0; y < xxxDebugHeight; ++y) {
-            int c = combFeedback[y][-y];
-            int comb =  c - (c / 8) + mono; 
-            combFeedback[y].push(comb);
+        // Update integral ring buffer
+        ring.push(mono);
+
+        if ((frames & 7) == 0) {
+            // Wavelets for each frequency band
+            for (unsigned x = 0; x < xxxDebugWidth; ++x) {
+
+                float hz = 13.75 * pow(2, x * (1.0 / 96.0));
+                float samplesPerCycle = sampleRate / hz;
+
+                float p1 = -1800;
+                float p2 = p1 + samplesPerCycle * 0.5;
+                float p0 = p1 - samplesPerCycle * 0.5;
+
+                //printf("%d %f %f %f\n", x, p0, p1, p2);
+
+                int64_t r = - ring.integrate(p0, p1) + ring.integrate(p1, p2);
+                int64_t c =   ring.integrate(p0, p1) - ring.integrate(p1, p2);
+
+                sums[x] += (r*r + c*c) / (samplesPerCycle * samplesPerCycle) * 1e-6;
+            }
         }
     }
 
-    // Integrate the energy in each comb filter's buffer
-    for (int y = 0; y < xxxDebugHeight; ++y) {
-
-            long energy = 0;
-            for (int j = 0; j < y*2; ++j) {
-                int x = combFeedback[y][-j];
-                energy += x * x;
-            }
-
-            uint8_t luma = std::max(0.001, std::min(255.99, sqrt(energy) * exposure));
-
-            xxxDebugBuffer[(y+1) * xxxDebugWidth - 1] = luma;
+    // Downsampled summary scaleogram
+    for (unsigned x = 0; x < xxxDebugWidth; ++x) {
+        int luma = std::min<int>(255.0, std::max<int>(0.0, sums[x] * xxxExposure));
+        xxxDebugBuffer[y * xxxDebugWidth + x] = luma;
     }
+    y++;
+    if (y == xxxDebugHeight) y = 0;
 }
 
 }  // namespace wb
