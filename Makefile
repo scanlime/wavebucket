@@ -4,6 +4,7 @@ VIZ_OBJS := \
 	src/viz_main.o \
 	src/tinythread.o \
 	src/wb_analyzer.o \
+	src/wb_biquad.o \
 	src/wb_gldebug.o
 
 CDEPS := src/*.h

@@ -4,7 +4,7 @@
  */
 
 #include <stdint.h>
-#include "wb_ring.h"
+#include "wb_biquad.h"
 #pragma once
 
 namespace wb {
@@ -24,7 +24,8 @@ public:
 private:
     unsigned sampleRate;
 
-    IntegralRing<int64_t, 8192> ring;
+    IIRGammatone filterSpec[1024];
+    BiquadChain<4> filterState[1024];
 };
 
 }  // namespace wb

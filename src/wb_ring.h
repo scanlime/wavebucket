@@ -68,38 +68,4 @@ public:
 };
 
 
-/**
- * A ring buffer which stores the integral of an incoming signal,
- * making definite integrals across arbitrary ranges a constant-time
- * operation.
- */
-
-template <typename T, unsigned tSize>
-class IntegralRing
-{
-private:
-    Ring<T, tSize> ring;
-    T c;
-
-public:
-    IntegralRing() : c(0) {}
-
-    void push(const T &item)
-    {
-        c += item;
-        ring.push(c);
-    }
-
-    T integrate(int from, int to) const
-    {
-        return ring[to] - ring[from];
-    }
-
-    T integrate(float from, float to) const
-    {
-        return ring[to] - ring[from];
-    }
-};
-
-
 }  // namespace wb
