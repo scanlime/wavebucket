@@ -44,18 +44,28 @@ void Analyzer::pcmInput(const int16_t *samples, unsigned channels, unsigned fram
             mono += *(samples++);
         }
 
+        double s = 0;
+
         // IIR for each frequency band
         for (unsigned band = 0; band < 1024; ++band) {
             double r = gains[band] * filterState[band].next(filterSpec[band].stages, mono);
             sums[band] += r * r;
+
+            s += r;
         }
 
-        if ((frames & 127) == 0) {
+        // xxx
+        /*
+        ((int16_t*)samples)[-1] = s;
+        ((int16_t*)samples)[-2] = s;
+    */
+
+        if ((frames & 15) == 0) {
             memmove(xxxDebugBuffer + xxxDebugWidth, xxxDebugBuffer, sizeof xxxDebugBuffer - xxxDebugWidth);
             for (unsigned x = 0; x < xxxDebugWidth; ++x) {
 
-                int luma = std::min<float>(255.0, std::max<float>(0.0, log(sums[x]) * 10 * xxxExposure));
-                //int luma = std::min<float>(255.0, std::max<float>(0.0, sums[x] * 1e-5 * xxxExposure));
+                //int luma = std::min<float>(255.0, std::max<float>(0.0, log(sums[x]) * 10 * xxxExposure));
+                int luma = std::min<float>(255.0, std::max<float>(0.0, sums[x] * 1e-10 * xxxExposure));
 
                 /*
                 if ((x % 96) == 0)
