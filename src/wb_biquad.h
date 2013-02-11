@@ -85,7 +85,7 @@ struct BiquadChain {
 struct IIRGammatone {
     Biquad stages[4];
 
-    void init(float centerHz, float sampleHz);
+    void init(float centerHz, float sampleHz, float bandwidthHz);
 };
 
 

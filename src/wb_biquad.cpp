@@ -9,7 +9,7 @@
 namespace wb {
 
 
-void IIRGammatone::init(float centerHz, float sampleHz)
+void IIRGammatone::init(float centerHz, float sampleHz, float bandwidthHz)
 {
     /*
      * From "An Efficient Implementation of the Patterson-Holdsworth
@@ -19,9 +19,7 @@ void IIRGammatone::init(float centerHz, float sampleHz)
      */
 
     float t = 1.0 / sampleHz;
-
-    //float b = 158.14337595199515 * (1.0 + 0.00437 * centerHz);
-    float b = 15.814337595199515 * (1.0 + 0.00437 * centerHz);
+    float b = bandwidthHz;
 
     float s = -2.0 * sin(2.0 * centerHz * M_PI * t) / exp(b * t);
     float c = -2.0 * cos(2.0 * centerHz * M_PI * t) / exp(b * t);
