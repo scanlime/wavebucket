@@ -7,22 +7,22 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include "ffft/FFTRealFixLen.h"
 #include "wb_analyzer.h"
 #include "wb_biquad.h"
-#include "kiss_fftr.h"
+
 
 namespace wb {
 
-static kiss_fftr_cfg kfft;
-static kiss_fftr_cfg kffti;
-static int counter;
+static ffft::FFTRealFixLen<10> fftr;
+static int counter, counter2;
+static int F0i;
+static float F0v;
+static float sums[4096];
 
 Analyzer::Analyzer(unsigned sampleRate)
     : xxxExposure(1.0), sampleRate(sampleRate)
-{
-    kfft = kiss_fftr_alloc(4096, 0, 0, 0);
-    kffti = kiss_fftr_alloc(4096, 1, 0, 0);
-}
+{}
 
 void Analyzer::pcmInput(const int16_t *samples, unsigned channels, unsigned frames)
 {
@@ -34,44 +34,70 @@ void Analyzer::pcmInput(const int16_t *samples, unsigned channels, unsigned fram
         }
         timeDomain.push(mono);
 
-        if (++counter == 160) {
+        const int halfLength = fftr.get_length()/2;
+
+        if (++counter2 == 32) {
+            counter2 = 0;
+
+            float v1[fftr.get_length()];
+            float v2[fftr.get_length()];
+
+            for (int x = 0; x < fftr.get_length(); x++) {
+                v1[x] = timeDomain[-x];
+            }
+
+            fftr.do_fft(v2, v1);
+
+            // Power spectrum
+            for (int x = 0; x != halfLength; ++x) {
+                float r = v2[x];
+                float i = v2[x + halfLength];
+                v2[x] = r*r + i*i;
+                v2[x + halfLength] = 0;
+            }
+
+            fftr.do_ifft(v2, v1);
+
+            for (int x = 0; x < halfLength; ++x) {
+                sums[x] += v1[x];
+            }
+        }
+
+        if (++counter == 1024) {
             counter = 0;
-
-            kiss_fft_scalar timedata[4096];
-            kiss_fft_cpx freqdata[4096];
-
-            for (int x = 0; x < 4096; x++) {
-                timedata[x] = timeDomain[-x];
-            }
-
-            kiss_fftr(kfft, timedata, freqdata);
-
-            for (int x = 0; x < 4096; x++) {
-                freqdata[x].r = freqdata[x].r * freqdata[x].r + freqdata[x].i * freqdata[x].i;
-                freqdata[x].i = 0;
-            }
-
-            kiss_fftri(kffti, freqdata, timedata);
-
-            memmove(xxxDebugBuffer + xxxDebugWidth, xxxDebugBuffer, sizeof xxxDebugBuffer - xxxDebugWidth);
 
             int maxI = 0;
             float maxV = 0;
-            for (int x = 1; x < xxxDebugWidth; ++x) {
-                float v = timedata[x];
-                if (v > maxV && timedata[x] > timedata[x-1] && timedata[x] > timedata[x+1]) {
+            for (int x = 1; x < halfLength; ++x) {
+                float v = sums[x];
+
+                // Sticky
+                if (x == F0i) v *= 1.1;
+
+                if (v > maxV && v > sums[x-1] && v > sums[x+1]) {
                     maxI = x;
                     maxV = v;
                 }
             }
-            printf("%d, F0 = %.02f Hz\n", maxI, 44100.0 / maxI);
 
-            for (int x = 0; x < xxxDebugWidth; ++x) {
-                int luma = std::min<float>(127.0, std::max<float>(0.0, timedata[x] * 1e-10 * xxxExposure));
-                if (maxI == x)
-                    luma = 255;
-                xxxDebugBuffer[x] = luma;
+            F0i = maxI;
+            F0v = maxV;
+
+            bool visible = F0v > 1e10;
+            if (visible) {
+             //   printf("%d, F0 = %.02f Hz, power %f\n", F0i, 44100.0 / F0i, F0v);
             }
+
+            memmove(xxxDebugBuffer, xxxDebugBuffer+1, sizeof xxxDebugBuffer - 1);
+
+            for (int x = 0; x < xxxDebugHeight; ++x) {
+                int luma = std::min<float>(200, std::max<float>(0.0, sqrt(sums[x]) * 2e-5 * xxxExposure));
+                if (visible && abs(F0i - x) < 2)
+                    luma = 255;
+                xxxDebugBuffer[(x+1) * xxxDebugWidth - 1] = luma;
+            }
+
+            memset(sums, 0, sizeof sums);
         }
     }
 }

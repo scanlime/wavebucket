@@ -3,8 +3,6 @@ BINS := viz
 VIZ_OBJS := \
 	src/viz_main.o \
 	src/tinythread.o \
-	src/kiss_fftr.o \
-	src/kiss_fft.o \
 	src/wb_analyzer.o \
 	src/wb_biquad.o \
 	src/wb_gldebug.o
@@ -12,7 +10,7 @@ VIZ_OBJS := \
 CDEPS := src/*.h
 
 PACKAGES := ao libglfw
-CCFLAGS := -Wall -Werror -g -O3 -ffast-math
+CCFLAGS := -Wall -Werror -g -O3 -ffast-math -Isrc
 LIBS := -lstdc++ -lAntTweakBar -lm
 
 CCFLAGS += $(shell pkg-config --cflags $(PACKAGES))
