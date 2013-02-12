@@ -18,11 +18,46 @@ static ffft::FFTRealFixLen<10> fftr;
 static int counter, counter2;
 static int F0i;
 static float F0v;
+static float phs;
+static float amplitude;
 static float sums[4096];
 
 Analyzer::Analyzer(unsigned sampleRate)
     : xxxExposure(1.0), sampleRate(sampleRate)
 {}
+
+float Analyzer::autotune(float hz)
+{
+    double refHz = 440.0;
+    double spacing = 1.0594630943592953;
+    return refHz * pow(spacing, round(log(hz / refHz) / log(spacing)));
+}
+
+void Analyzer::pcmSynth(int16_t *samples, unsigned channels, unsigned frames)
+{
+    while (frames--) {
+        int mono;
+
+        if (F0i) {
+            float f0hz = sampleRate / F0i;
+            f0hz = autotune(f0hz);
+
+            phs += (M_PI * 2.0 * f0hz) / sampleRate;
+            float targetA = F0v * 1e-9;
+            amplitude += (targetA - amplitude) * 0.001;
+
+            amplitude = std::min<float>(0x8000, amplitude);
+            mono = sinf(phs) * amplitude;
+        } else {
+            phs = 0;
+            mono = 0;
+        }
+    
+        for (int c = channels; c; --c) {
+            *(samples++) = mono;
+        }
+    }
+}
 
 void Analyzer::pcmInput(const int16_t *samples, unsigned channels, unsigned frames)
 {
@@ -63,7 +98,7 @@ void Analyzer::pcmInput(const int16_t *samples, unsigned channels, unsigned fram
             }
         }
 
-        if (++counter == 1024) {
+        if (++counter == 700) {
             counter = 0;
 
             int maxI = 0;
@@ -72,7 +107,7 @@ void Analyzer::pcmInput(const int16_t *samples, unsigned channels, unsigned fram
                 float v = sums[x];
 
                 // Sticky
-                if (x == F0i) v *= 1.1;
+                //if (x == F0i) v *= 1.5;
 
                 if (v > maxV && v > sums[x-1] && v > sums[x+1]) {
                     maxI = x;

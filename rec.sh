@@ -6,4 +6,4 @@ set -e
 
 make
 
-rec -r 44100 -b 16 -s -t raw - | ./viz
+rec --buffer 256 -r 44100 -b 16 -s -t raw - | ./viz

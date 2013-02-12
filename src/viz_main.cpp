@@ -82,8 +82,9 @@ struct Viz
             unsigned truncBytes = frames * frameSize;
             offset = numBytes - truncBytes;
 
-            ao_play(dev, buffer.bytes, truncBytes);
             analyzer.pcmInput(buffer.samples, fmt.channels, frames);
+            analyzer.pcmSynth(buffer.samples, fmt.channels, frames);
+            ao_play(dev, buffer.bytes, truncBytes);
 
             memmove(buffer.bytes, buffer.bytes + truncBytes, offset);
         }
