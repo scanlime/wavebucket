@@ -2,6 +2,7 @@ BINS := viz
 
 VIZ_OBJS := \
 	src/viz_main.o \
+	src/vibeam.o \
 	src/tinythread.o \
 	src/wb_analyzer.o \
 	src/wb_biquad.o \

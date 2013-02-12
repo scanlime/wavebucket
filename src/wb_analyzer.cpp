@@ -10,6 +10,7 @@
 #include "ffft/FFTRealFixLen.h"
 #include "wb_analyzer.h"
 #include "wb_biquad.h"
+#include "vibeam.h"
 
 
 namespace wb {
@@ -23,11 +24,16 @@ static float amplitude;
 static float sums[4096];
 static BiquadChain<4> filterState;
 static IIRGammatone filter;
+static Vibeam vibe;
+static Ring<int16_t, 1<<20> delayline;
+
+// compensating for processing, radio, and motor delays
+static const int delay = 5000;
 
 Analyzer::Analyzer(unsigned sampleRate)
     : xxxExposure(1.0), sampleRate(sampleRate)
 {
-    filter.init(300, sampleRate, 1e4);
+    filter.init(100, sampleRate, 1e3);
     filterState.init();
 }
 
@@ -51,9 +57,11 @@ void Analyzer::pcmSynth(int16_t *samples, unsigned channels, unsigned frames)
         float targetA = F0v * 1e-9;
         amplitude += (targetA - amplitude) * 0.001;
         amplitude = std::min<float>(0x8000, amplitude);
-
         mono = sinf(phs) * amplitude;
-    
+
+        // xxx delay
+        mono = delayline[int(-delay-frames)];
+
         for (int c = channels; c; --c) {
             *(samples++) = mono;
         }
@@ -68,7 +76,8 @@ void Analyzer::pcmInput(const int16_t *samples, unsigned channels, unsigned fram
         for (int c = channels; c; --c) {
             mono += *(samples++);
         }
-        timeDomain.push(filterState.next(filter.stages, mono) * 1e16);
+        delayline.push(mono/2);
+        timeDomain.push(filterState.next(filter.stages, mono) * 1e12);
 
         const int halfLength = fftr.get_length()/2;
 
@@ -119,16 +128,20 @@ void Analyzer::pcmInput(const int16_t *samples, unsigned channels, unsigned fram
             F0i = maxI;
             F0v = maxV;
 
-            bool visible = F0v > 1e10;
+            bool visible = F0v > 1e15;
+            float F0 = float(sampleRate) / F0i;
             if (visible) {
-                //printf("%d, F0 = %.02f Hz, power %f\n", F0i, 44100.0 / F0i, F0v);
+                printf("%d, F0 = %.02f Hz, power %f\n", F0i, F0, F0v);
             }
+
+            vibe.txPower(visible && F0 < 100 ? (F0 * 1.5) : 0);
 
             memmove(xxxDebugBuffer, xxxDebugBuffer+1, sizeof xxxDebugBuffer - 1);
 
             for (int x = 0; x < xxxDebugHeight; ++x) {
-                int luma = std::min<float>(200, std::max<float>(0.0, sqrt(sums[x]) * 2e-5 * xxxExposure));
-                if (visible && abs(F0i - x) < 2)
+                int i = x*2;
+                int luma = std::min<float>(200, std::max<float>(0.0, sqrt(sums[i]) * 2e-5 * xxxExposure));
+                if (visible && abs(F0i - i) < 2)
                     luma = 255;
                 xxxDebugBuffer[(x+1) * xxxDebugWidth - 1] = luma;
             }
