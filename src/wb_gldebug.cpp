@@ -28,7 +28,7 @@ int GLDebug::setup()
 
     glfwEnable(GLFW_MOUSE_CURSOR);
     glfwEnable(GLFW_KEY_REPEAT);
-    glfwSetWindowTitle("Viz Debug UI");
+    glfwSetWindowTitle("Wavebucket");
 
     TwInit(TW_OPENGL, NULL);
     twBar = TwNewBar("Tweaky");
