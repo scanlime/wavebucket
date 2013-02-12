@@ -14,7 +14,7 @@
 
 namespace wb {
 
-static ffft::FFTRealFixLen<10> fftr;
+static ffft::FFTRealFixLen<11> fftr;
 static int counter, counter2;
 static int F0i;
 static float F0v;
@@ -22,9 +22,40 @@ static float phs;
 static float amplitude;
 static float sums[4096];
 
+static float weights[4096];
+
 Analyzer::Analyzer(unsigned sampleRate)
     : xxxExposure(1.0), sampleRate(sampleRate)
-{}
+{
+    // XXX iso226
+    static const float f[] = {
+        20, 25, 31.5, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800,
+        1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500
+    };
+
+    static const float lu[] = {
+       -31.6, -27.2, -23.0, -19.1, -15.9, -13.0, -10.3, -8.1, -6.2, -4.5, -3.1,
+       -2.0,  -1.1,  -0.4,   0.0,   0.3,   0.5,   0.0, -2.7, -4.1, -1.0,  1.7,
+        2.5,   1.2,  -2.1,  -7.1, -11.2, -10.7,  -3.1
+    };
+
+    weights[0] = 1;
+    for (int i = 1; i < 4096; ++i) {
+        float hz = float(sampleRate) / i;
+
+        // Nearest table entries
+        int t0 = 0;
+        for (int j = 0; j < 29; ++j) {
+            if (abs(f[j] - hz) < abs(f[t0] - hz) && f[j] <= hz) t0 = j;
+        }
+
+        // Log-linear Interpolate
+        float a = (log(hz) - log(f[t0])) / (log(f[t0+1]) - log(f[t0]));
+        float db = lu[t0] + a * (lu[t0+1] - lu[t0]);
+        weights[i] = pow(10.0, db/10.0);
+        //printf("%d %f [%d] %f\n", i, hz, t0, weights[i]);
+    }
+}
 
 float Analyzer::autotune(float hz)
 {
@@ -35,23 +66,19 @@ float Analyzer::autotune(float hz)
 
 void Analyzer::pcmSynth(int16_t *samples, unsigned channels, unsigned frames)
 {
+    double f0hz = F0i ? sampleRate / F0i : 0;
+    f0hz = autotune(f0hz);
+    double phsm = M_PI * 2.0 / sampleRate * f0hz;
+
     while (frames--) {
         int mono;
 
-        if (F0i) {
-            float f0hz = sampleRate / F0i;
-            f0hz = autotune(f0hz);
+        phs = fmod(phs + phsm, 2 * M_PI);
+        float targetA = F0v * 1e-9;
+        amplitude += (targetA - amplitude) * 0.001;
+        amplitude = std::min<float>(0x8000, amplitude);
 
-            phs += (M_PI * 2.0 * f0hz) / sampleRate;
-            float targetA = F0v * 1e-9;
-            amplitude += (targetA - amplitude) * 0.001;
-
-            amplitude = std::min<float>(0x8000, amplitude);
-            mono = sinf(phs) * amplitude;
-        } else {
-            phs = 0;
-            mono = 0;
-        }
+        mono = sinf(phs) * amplitude;
     
         for (int c = channels; c; --c) {
             *(samples++) = mono;
@@ -94,7 +121,7 @@ void Analyzer::pcmInput(const int16_t *samples, unsigned channels, unsigned fram
             fftr.do_ifft(v2, v1);
 
             for (int x = 0; x < halfLength; ++x) {
-                sums[x] += v1[x];
+                sums[x] += v1[x]; // * weights[x];
             }
         }
 
