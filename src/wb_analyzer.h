@@ -29,7 +29,7 @@ private:
 
     float autotune(float hz);
 
-    Ring<int, 16384> timeDomain;
+    Ring<float, 16384> timeDomain;
 };
 
 }  // namespace wb

@@ -21,40 +21,14 @@ static float F0v;
 static float phs;
 static float amplitude;
 static float sums[4096];
-
-static float weights[4096];
+static BiquadChain<4> filterState;
+static IIRGammatone filter;
 
 Analyzer::Analyzer(unsigned sampleRate)
     : xxxExposure(1.0), sampleRate(sampleRate)
 {
-    // XXX iso226
-    static const float f[] = {
-        20, 25, 31.5, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800,
-        1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500
-    };
-
-    static const float lu[] = {
-       -31.6, -27.2, -23.0, -19.1, -15.9, -13.0, -10.3, -8.1, -6.2, -4.5, -3.1,
-       -2.0,  -1.1,  -0.4,   0.0,   0.3,   0.5,   0.0, -2.7, -4.1, -1.0,  1.7,
-        2.5,   1.2,  -2.1,  -7.1, -11.2, -10.7,  -3.1
-    };
-
-    weights[0] = 1;
-    for (int i = 1; i < 4096; ++i) {
-        float hz = float(sampleRate) / i;
-
-        // Nearest table entries
-        int t0 = 0;
-        for (int j = 0; j < 29; ++j) {
-            if (abs(f[j] - hz) < abs(f[t0] - hz) && f[j] <= hz) t0 = j;
-        }
-
-        // Log-linear Interpolate
-        float a = (log(hz) - log(f[t0])) / (log(f[t0+1]) - log(f[t0]));
-        float db = lu[t0] + a * (lu[t0+1] - lu[t0]);
-        weights[i] = pow(10.0, db/10.0);
-        //printf("%d %f [%d] %f\n", i, hz, t0, weights[i]);
-    }
+    filter.init(300, sampleRate, 1e4);
+    filterState.init();
 }
 
 float Analyzer::autotune(float hz)
@@ -94,7 +68,7 @@ void Analyzer::pcmInput(const int16_t *samples, unsigned channels, unsigned fram
         for (int c = channels; c; --c) {
             mono += *(samples++);
         }
-        timeDomain.push(mono);
+        timeDomain.push(filterState.next(filter.stages, mono) * 1e16);
 
         const int halfLength = fftr.get_length()/2;
 
@@ -121,7 +95,7 @@ void Analyzer::pcmInput(const int16_t *samples, unsigned channels, unsigned fram
             fftr.do_ifft(v2, v1);
 
             for (int x = 0; x < halfLength; ++x) {
-                sums[x] += v1[x]; // * weights[x];
+                sums[x] += v1[x];
             }
         }
 
@@ -134,9 +108,9 @@ void Analyzer::pcmInput(const int16_t *samples, unsigned channels, unsigned fram
                 float v = sums[x];
 
                 // Sticky
-                //if (x == F0i) v *= 1.5;
+                float w = 1.0 + 10.0 / (1 + pow(x - F0i, 2));
 
-                if (v > maxV && v > sums[x-1] && v > sums[x+1]) {
+                if (v*w > maxV && v > sums[x-1] && v > sums[x+1]) {
                     maxI = x;
                     maxV = v;
                 }
@@ -147,7 +121,7 @@ void Analyzer::pcmInput(const int16_t *samples, unsigned channels, unsigned fram
 
             bool visible = F0v > 1e10;
             if (visible) {
-             //   printf("%d, F0 = %.02f Hz, power %f\n", F0i, 44100.0 / F0i, F0v);
+                //printf("%d, F0 = %.02f Hz, power %f\n", F0i, 44100.0 / F0i, F0v);
             }
 
             memmove(xxxDebugBuffer, xxxDebugBuffer+1, sizeof xxxDebugBuffer - 1);
