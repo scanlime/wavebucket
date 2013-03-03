@@ -10,7 +10,7 @@
 #include "ffft/FFTRealFixLen.h"
 #include "wb_analyzer.h"
 #include "wb_biquad.h"
-#include "vibeam.h"
+#include "ledcomm.h"
 
 
 namespace wb {
@@ -24,7 +24,7 @@ static float amplitude;
 static float sums[4096];
 static BiquadChain<4> filterState;
 static IIRGammatone filter;
-static Vibeam vibe;
+static LEDComm leds;
 static Ring<int16_t, 1<<20> delayline;
 
 // compensating for processing, radio, and motor delays
@@ -77,15 +77,18 @@ void Analyzer::pcmInput(const int16_t *samples, unsigned channels, unsigned fram
             mono += *(samples++);
         }
         delayline.push(mono/2);
-        timeDomain.push(filterState.next(filter.stages, mono) * 1e12);
+
+        //timeDomain.push(filterState.next(filter.stages, mono) * 1e12);
+        timeDomain.push(mono);
 
         const int halfLength = fftr.get_length()/2;
+
+        static float v1[4096];
+        static float v2[4096];
 
         if (++counter2 == 32) {
             counter2 = 0;
 
-            float v1[fftr.get_length()];
-            float v2[fftr.get_length()];
 
             for (int x = 0; x < fftr.get_length(); x++) {
                 v1[x] = timeDomain[-x];
@@ -104,49 +107,30 @@ void Analyzer::pcmInput(const int16_t *samples, unsigned channels, unsigned fram
             fftr.do_ifft(v2, v1);
 
             for (int x = 0; x < halfLength; ++x) {
-                sums[x] += v1[x];
+                sums[x] += v2[x];
             }
         }
 
-        if (++counter == 700) {
+        if (++counter == 1500) {
             counter = 0;
-
-            int maxI = 0;
-            float maxV = 0;
-            for (int x = 1; x < halfLength; ++x) {
-                float v = sums[x];
-
-                // Sticky
-                float w = 1.0 + 10.0 / (1 + pow(x - F0i, 2));
-
-                if (v*w > maxV && v > sums[x-1] && v > sums[x+1]) {
-                    maxI = x;
-                    maxV = v;
-                }
-            }
-
-            F0i = maxI;
-            F0v = maxV;
-
-            bool visible = F0v > 1e15;
-            float F0 = float(sampleRate) / F0i;
-            if (visible) {
-                printf("%d, F0 = %.02f Hz, power %f\n", F0i, F0, F0v);
-            }
-
-            vibe.txPower(visible && F0 < 100 ? (F0 * 1.5) : 0);
 
             memmove(xxxDebugBuffer, xxxDebugBuffer+1, sizeof xxxDebugBuffer - 1);
 
             for (int x = 0; x < xxxDebugHeight; ++x) {
                 int i = x*2;
-                int luma = std::min<float>(200, std::max<float>(0.0, sqrt(sums[i]) * 2e-5 * xxxExposure));
-                if (visible && abs(F0i - i) < 2)
-                    luma = 255;
+                int luma = std::min<float>(255, std::max<float>(0.0, sqrt(sums[i]) * 1e-6 * xxxExposure));
                 xxxDebugBuffer[(x+1) * xxxDebugWidth - 1] = luma;
+
+                int j = i/2;
+                if (j < 240)
+                    leds.setPixel(j, luma | (luma << 8) | (luma << 16));
             }
 
             memset(sums, 0, sizeof sums);
+
+            leds.update();
+
+            printf("poke\n");
         }
     }
 }
