@@ -38,57 +38,34 @@ static const Point center(9);
 
 // Wandering point, starts at origin.
 Point p = center;
-int axis = 1;
 int counter = 0;
-unsigned color = 0xffffff;
-bool walking = false;
 
 void setup()
 {
   leds.begin();
 }
 
-// Wander to a random neighbor, but don't eat our tail.
-bool randomWalk()
-{
-  // Max tries before we give up and wait to fade...
-  for (int i = 0; i < 20; ++i) {
-    Point candidate = grid.next(p, random(1, 4));
-    if (candidate != Point::invalid() && leds.getPixel(candidate) == 0) {
-      p = candidate;
-      return true;
-    }
-  }
-
-  // Timed out, switch colors
-  color = addsat(0x404040, random(0x1000000));
-
-  // Try to find an unoccupied triangle to warp to
-  for (int i = 0; i < 20; ++i) {
-    Point candidate = random(ledCount);
-    if (leds.getPixel(candidate) == 0) {
-      p = candidate;
-      return true;
-    }
-  }
-
-  return false;
-}
-
 void loop()
 {
-  // Fade
-  for (unsigned i = 0; i < ledCount; ++i)
-    leds.setPixel(i, lerp(leds.getPixel(i), 0, 1));
-
-  // Wander
-  if (++counter == 20) {
-    counter = 0;
-    walking = randomWalk();
+  // Background
+  for (unsigned i = 0; i < ledCount; ++i) {
+    Point p = i;
+    unsigned dist = grid.distance(p, center);
+    leds.setPixel(i, lerp(0x000000, 0x200820, (sin(dist * 0.2 + millis() * 0.001) + 1) * 127));
   }
 
-  if (walking)
-    leds.setPixel(p, color);
+  // Wanderer
+  leds.setPixel(p, 0xffffff);
+  if (++counter == 100) {
+    counter = 0;
+    grid.move(p, random(1, 4));
+  }
+
+  // Shape
+  Point z;
+  if ((z = grid.next(p, A_AXIS)) != Point::invalid()) leds.setPixel(z, 0xff0000);
+  if ((z = grid.next(p, B_AXIS)) != Point::invalid()) leds.setPixel(z, 0x00ff00);
+  if ((z = grid.next(p, C_AXIS)) != Point::invalid()) leds.setPixel(z, 0x0000ff);
 
   leds.show();
   delay(5);
