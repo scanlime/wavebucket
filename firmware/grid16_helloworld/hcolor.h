@@ -74,13 +74,13 @@ static inline HColor lerp8(HColor c1, HColor c2, int alpha) {
   return c;
 }
 
-/// Floating point linear interpolation
+/// Floating point linear interpolation, with clamping.
 static inline HColor lerp(HColor c1, HColor c2, float alpha) {
   float invA = 1.0f - alpha;
   HColor c = {
-    (c1.r * invA + c2.r * alpha),
-    (c1.g * invA + c2.g * alpha),
-    (c1.b * invA + c2.b * alpha),
+    std::min<int>(0xffff, std::max<int>(0, c1.r * invA + c2.r * alpha)),
+    std::min<int>(0xffff, std::max<int>(0, c1.g * invA + c2.g * alpha)),
+    std::min<int>(0xffff, std::max<int>(0, c1.b * invA + c2.b * alpha)),
   };
   return c;
 }

@@ -37,10 +37,6 @@ Grid grid(grid16_lut, sizeof grid16_lut);
 
 static const Point center(9);
 
-// Wandering point, starts at origin.
-Point p = center;
-int counter = 0;
-
 void setup()
 {
   leds.begin();
@@ -48,15 +44,40 @@ void setup()
 
 void loop()
 {
+  const float bpm = 60;
+  float beat = millis() * (bpm / 60000.0f);
+
   // Background and fade.
   for (unsigned i = 0; i < ledCount; ++i) {
     Point p = i;
     unsigned dist = grid.distance(p, center);
-    float alpha = 0.5 * (sin(dist * 0.4 + millis() * 0.002) + 1);
-    pixbuf.pixels[i].color = lerp(HColor8(0), HColor8(0x200820), alpha);
+    float alpha = 0.5 * (sin(dist * 0.4 + beat * (M_PI * 2)) + 1);
+    pixbuf.pixels[i].color = lerp(HColor8(0), HColor8(0x080808), alpha);
   }
 
-  pixbuf.pixels[p].color = HColor8(0x00FFFF);
+  // Throbbing
+  static const int8_t shape[] = {
+    B_AXIS, 0,
+    -A_AXIS, C_AXIS,
+    -B_AXIS, 0,
+    A_AXIS, -C_AXIS,
+  };
+  HColor colors[] = {
+    HColor8(0x000030),
+    HColor8(0x000030),
+    HColor8(0x000030),
+    HColor8(0x00ffff),
+  };
+  Point p = center;
+  for (unsigned i = 0; i < 4; i++) {
+    float flash = 1.0f / (1.0f + fmod(beat*4 + i, 4.0f) * 4.0f);
+    HColor c = lerp(HColor8(0), colors[i], flash);
+
+    pixbuf.pixels[p].color = pixbuf.pixels[p].color + c;
+    grid.move(p, shape[i*2+0]);
+    pixbuf.pixels[p].color = pixbuf.pixels[p].color + c;
+    grid.move(p, shape[i*2+1]);
+  }
 
   pixbuf.show(leds);
 }
