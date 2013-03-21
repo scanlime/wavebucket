@@ -1,6 +1,6 @@
 #include <OctoWS2811.h>
 #include "triangular.h"
-#include "color.h"
+#include "hcolor.h"
 
 using namespace Triangular;
 
@@ -8,6 +8,7 @@ static const int ledCount = 16;
 DMAMEM int displayMemory[ledCount*6];
 int drawingMemory[ledCount*6];
 OctoWS2811 leds(ledCount, displayMemory, drawingMemory, WS2811_GRB | WS2811_800kHz);
+HPixelBuffer<ledCount> pixbuf;
 
 // This table describes the way the LED strips are arragned in the 16-pixel triangular grid.
 static const uint16_t grid16_lut[] =
@@ -45,13 +46,6 @@ void setup()
   leds.begin();
 }
 
-struct DitheredLED {
-  float color[3];
-  float residual[3];
-};
-
-DitheredLED dither[ledCount];
-
 void loop()
 {
   // Background and fade.
@@ -59,52 +53,10 @@ void loop()
     Point p = i;
     unsigned dist = grid.distance(p, center);
     float alpha = 0.5 * (sin(dist * 0.4 + millis() * 0.002) + 1);
-    dither[i].color[0] = dither[i].color[0] * 0.9 + alpha * 0.0125;
-    dither[i].color[1] = dither[i].color[1] * 0.9 + alpha * 0.0031;
-    dither[i].color[2] = dither[i].color[2] * 0.9 + alpha * 0.0125;
+    pixbuf.pixels[i].color = lerp(HColor8(0), HColor8(0x200820), alpha);
   }
 
-  dither[p].color[1] += 0.2;
-  if (++counter == 8) {
-    counter = 0;
+  pixbuf.pixels[p].color = HColor8(0x00FFFF);
 
-    // Move in the dimmest direction
-    Point best = Point::invalid();
-    float bestMetric = 1e10;
-    Point nbr[3];
-    unsigned nbrCount = grid.neighbors(p, nbr);
-    for (unsigned i = 0; i < nbrCount; ++i) {
-      float metric = dither[nbr[i]].color[0] + dither[nbr[i]].color[1] + dither[nbr[i]].color[2];
-      if (metric < bestMetric) {
-        bestMetric = metric;
-        best = nbr[i];
-      }
-    }
-
-    if (best != Point::invalid()) {
-      p = best;
-    }
-  }
-
-  // LED dithering
-  for (unsigned i = 0; i < ledCount; ++i) {
-    float fr = dither[i].color[0] + dither[i].residual[0];
-    float fg = dither[i].color[1] + dither[i].residual[1];
-    float fb = dither[i].color[2] + dither[i].residual[2];
-    int r = fr * 255 + 0.5;
-    int g = fg * 255 + 0.5;
-    int b = fb * 255 + 0.5;
-    if (r < 0) r = 0;
-    if (r > 255) r = 255;
-    if (g < 0) g = 0;
-    if (g > 255) g = 255;
-    if (b < 0) b = 0;
-    if (b > 255) b = 255;
-    dither[i].residual[0] = fr - (r / 255.0);
-    dither[i].residual[1] = fg - (g / 255.0);
-    dither[i].residual[2] = fb - (b / 255.0);
-    leds.setPixel(i, r, g, b);
-  }
-
-  leds.show();
+  pixbuf.show(leds);
 }
