@@ -11,8 +11,8 @@ OctoWS2811 leds(ledCount, displayMemory, drawingMemory, WS2811_GRB | WS2811_800k
 HPixelBuffer<ledCount> pixbuf;
 
 // This table describes the way the LED strips are arragned in the 16-pixel triangular grid.
-static const uint16_t grid16_lut[] =
-{
+#ifdef REV1
+static const uint16_t grid16_lut[] = {
   /*  0 */  Grid::EVEN | Grid::DIR_POS |                 Grid::NBR_POS | Grid::V_NONE,
   /*  1 */  Grid::ODD  | Grid::DIR_POS | Grid::NBR_NEG | Grid::NBR_POS | 11,
   /*  2 */  Grid::EVEN | Grid::DIR_POS | Grid::NBR_NEG | Grid::NBR_POS | Grid::V_NONE,
@@ -32,10 +32,37 @@ static const uint16_t grid16_lut[] =
   /* 14 */  Grid::EVEN | Grid::DIR_POS | Grid::NBR_NEG |                 8,
 
   /* 15 */  Grid::EVEN | Grid::DIR_NEG |                                 13,
+};
+static const Point center(9);
+
+#else // REV2
+
+static const uint16_t grid16_lut[] = {
+  /*  0 */  Grid::EVEN | Grid::DIR_NEG |                                 2,
+
+  /*  1 */  Grid::EVEN | Grid::DIR_POS |                 Grid::NBR_POS | 7,
+  /*  2 */  Grid::ODD  | Grid::DIR_POS | Grid::NBR_NEG | Grid::NBR_POS | 0,
+  /*  3 */  Grid::EVEN | Grid::DIR_POS | Grid::NBR_NEG |                 5,
+
+  /*  4 */  Grid::EVEN | Grid::DIR_NEG | Grid::NBR_NEG |                 14,
+  /*  5 */  Grid::ODD  | Grid::DIR_NEG | Grid::NBR_NEG | Grid::NBR_POS | 3,
+  /*  6 */  Grid::EVEN | Grid::DIR_NEG | Grid::NBR_NEG | Grid::NBR_POS | 12,
+  /*  7 */  Grid::ODD  | Grid::DIR_NEG | Grid::NBR_NEG | Grid::NBR_POS | 1,
+  /*  8 */  Grid::EVEN | Grid::DIR_NEG |                 Grid::NBR_POS | 10,
+
+  /*  9 */  Grid::EVEN | Grid::DIR_POS |                 Grid::NBR_POS | Grid::V_NONE,
+  /* 10 */  Grid::ODD  | Grid::DIR_POS | Grid::NBR_NEG | Grid::NBR_POS | 8,
+  /* 11 */  Grid::EVEN | Grid::DIR_POS | Grid::NBR_NEG | Grid::NBR_POS | Grid::V_NONE,
+  /* 12 */  Grid::ODD  | Grid::DIR_POS | Grid::NBR_NEG | Grid::NBR_POS | 6,
+  /* 13 */  Grid::EVEN | Grid::DIR_POS | Grid::NBR_NEG | Grid::NBR_POS | Grid::V_NONE,
+  /* 14 */  Grid::ODD  | Grid::DIR_POS | Grid::NBR_NEG | Grid::NBR_POS | 4,
+  /* 15 */  Grid::EVEN | Grid::DIR_POS | Grid::NBR_NEG |                 Grid::V_NONE,
 };  
+static const Point center(6);
+#endif
+
 Grid grid(grid16_lut, sizeof grid16_lut);
 
-static const Point center(9);
 
 void setup()
 {
@@ -52,7 +79,7 @@ void loop()
     Point p = i;
     unsigned dist = grid.distance(p, center);
     float alpha = 0.5 * (sin(dist * 0.4 + beat * (M_PI * 2)) + 1);
-    pixbuf.pixels[i].color = lerp(HColor8(0), HColor8(0x080808), alpha);
+    pixbuf.pixels[i].color = lerp(HColor8(0), HColor8(0x080000), alpha);
   }
 
   // Throbbing
@@ -63,20 +90,21 @@ void loop()
     A_AXIS, -C_AXIS,
   };
   HColor colors[] = {
-    HColor8(0x000030),
+    HColor8(0x00ffff),
     HColor8(0x000030),
     HColor8(0x000030),
     HColor8(0x00ffff),
   };
   Point p = center;
-  for (unsigned i = 0; i < 4; i++) {
+  for (unsigned i = 0; i < 1; i++) {
     float flash = 1.0f / (1.0f + fmod(beat*4 + i, 4.0f) * 4.0f);
     HColor c = lerp(HColor8(0), colors[i], flash);
 
     pixbuf.pixels[p].color = pixbuf.pixels[p].color + c;
     grid.move(p, shape[i*2+0]);
-    pixbuf.pixels[p].color = pixbuf.pixels[p].color + c;
-    grid.move(p, shape[i*2+1]);
+ 
+    //pixbuf.pixels[p].color = pixbuf.pixels[p].color + c;
+    //grid.move(p, shape[i*2+1]);
   }
 
   pixbuf.show(leds);
