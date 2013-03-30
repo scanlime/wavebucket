@@ -10,6 +10,8 @@ int drawingMemory[ledCount*6];
 OctoWS2811 leds(ledCount, displayMemory, drawingMemory, WS2811_GRB | WS2811_800kHz);
 HPixelBuffer<ledCount> pixbuf;
 
+#define REV1
+
 // This table describes the way the LED strips are arragned in the 16-pixel triangular grid.
 #ifdef REV1
 static const uint16_t grid16_lut[] = {
@@ -84,27 +86,26 @@ void loop()
 
   // Throbbing
   static const int8_t shape[] = {
-    B_AXIS, 0,
-    -A_AXIS, C_AXIS,
-    -B_AXIS, 0,
-    A_AXIS, -C_AXIS,
+    -A_AXIS, -C_AXIS, A_AXIS, -B_AXIS, -B_AXIS, -B_AXIS, -B_AXIS,
+    -A_AXIS, -A_AXIS, -A_AXIS, -A_AXIS, -A_AXIS,
   };
   HColor colors[] = {
     HColor8(0x00ffff),
-    HColor8(0x000030),
-    HColor8(0x000030),
-    HColor8(0x00ffff),
+    HColor8(0xffffff),
+    HColor8(0xff0000),
+    HColor8(0x00ff00),
+    HColor8(0x0000ff),
   };
-  Point p = center;
-  for (unsigned i = 0; i < 1; i++) {
-    float flash = 1.0f / (1.0f + fmod(beat*4 + i, 4.0f) * 4.0f);
-    HColor c = lerp(HColor8(0), colors[i], flash);
 
+  Point p = center;
+  float fBeat = beat * 0.6f;
+  unsigned nColor = unsigned(fBeat) % (sizeof colors / sizeof colors[0]);
+  float flash = 1.0f / (1.0f + fmod(fBeat, 1.0f) * 30.0f);
+  HColor c = lerp(HColor8(0), colors[nColor], flash);
+
+  for (int i = 0; i < (sizeof shape / sizeof shape[0]); ++i) { 
+    grid.move(p, shape[i]);
     pixbuf.pixels[p].color = pixbuf.pixels[p].color + c;
-    grid.move(p, shape[i*2+0]);
- 
-    //pixbuf.pixels[p].color = pixbuf.pixels[p].color + c;
-    //grid.move(p, shape[i*2+1]);
   }
 
   pixbuf.show(leds);
