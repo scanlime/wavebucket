@@ -1,8 +1,7 @@
 wavebucket
 ==========
 
-Experiments in audio processing and music visualization.
-Private for now.
+Random private experiments in audio processing, music visualization, and LED art.
 
-Micah Elizabeth Scott <beth@scanlime.org>
-
+Copyright (C) 2014 Micah Elizabeth Scott <micah@misc.name>
+All rights reserved.
